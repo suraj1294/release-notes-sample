@@ -11,11 +11,28 @@ const getPrevTag = async () => {
     throw new Error("No tags found in the repository.");
   }
   //const sortedTags = tags.sort((a, b) => new Date(b.date) - new Date(a.date));
-  return sortedTags[0];
+  return tags[0];
 };
 
 const getLogsFromLastTag = async () => {
+  //raw git command to get commits from pre tag
+  //const cmd = `git log ${}..HEAD --pretty=format:"%h - %s"`;
+
   const prevTag = await getPrevTag();
+  const cmd = `git log -1 ${prevTag}..HEAD --pretty=format:'{
+"hash": "%H",
+"date": "%ad",
+"message": "%s",
+"refs": "%d",
+"body": "%b",
+"author_name": "%an",
+"author_email": "%ae"
+}'`;
+
+  const logs1 = await execSync(cmd).toString().trim();
+
+  console.log(JSON.parse(logs1));
+
   const logs = await git.log({ from: prevTag });
 
   return logs.all;
