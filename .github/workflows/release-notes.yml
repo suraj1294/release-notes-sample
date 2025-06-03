@@ -28,7 +28,7 @@ jobs:
       - name: Generate AI summary
         id: ai_summary
         run: |
-          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "Fetching PR details..."
           gh pr view ${{ github.event.pull_request.number }} --json title,body,url --jq '{title: .title, body: .body, url: .diff_url} > pr_data.json'
 
           TITLE=$(jq -r '.title' pr_data.json)
