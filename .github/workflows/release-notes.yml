@@ -2,10 +2,10 @@
 name: Push PR Summary to ReleaseNotes.io
 
 on:
+  push:
+    branches: [main]
   pull_request:
-    types: [closed, opened]
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   push-to-releasenotes:
