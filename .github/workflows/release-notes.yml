@@ -22,11 +22,15 @@ jobs:
           route: GET /repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install GitHub CLI
+        run: sudo apt-get install gh -y
 
       - name: Generate AI summary
         id: ai_summary
         run: |
-          echo "${{ steps.pr.outputs.data }}" > pr_data.json
+          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          gh pr view ${{ github.event.pull_request.number }} --json title,body,diff_url --jq '{title: .title, body: .body, diff_url: .diff_url} > pr_data.json'
+
           TITLE=$(jq -r '.title' pr_data.json)
           BODY=$(jq -r '.body' pr_data.json)
           DIFF_URL=$(jq -r '.diff_url' pr_data.json)
