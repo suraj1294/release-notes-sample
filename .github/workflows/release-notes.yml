@@ -35,6 +35,18 @@ jobs:
           SUMMARY=$(echo "$BODY" | head -c 200)
           echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
 
+      - uses: actions/checkout@v4
+        with:
+          node-version: 20.x
+      - name: Push to ReleaseNotes.io (via JS)
+
+        run: |
+          node .github/scripts/pushToReleaseNotes.cjs
+        env:
+          RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
+          PR_TITLE: "${{ steps.pr_data.outputs.title }}"
+          PR_SUMMARY: "${{ steps.summary.outputs.summary }}"
+
       - name: Push to ReleaseNotes.io (stubbed API call)
         run: |
           TITLE="${{ steps.pr_data.outputs.title }}"
