@@ -1,51 +1,49 @@
 // pushToReleaseNotes.js
 
-const https = require("https");
-
 const API_KEY = process.env.RELEASENOTES_API_KEY;
-const ENDPOINT = "https://api.releasenotes.io/v1/releases/draft/entries";
+const TITLE = process.env.PR_TITLE || "Untitled PR";
+const SUMMARY = process.env.PR_SUMMARY || "No summary provided.";
 
-// Example input values
-const prTitle = process.env.PR_TITLE || "Default PR Title";
-const prSummary =
-  process.env.PR_SUMMARY || "This is a summary of the PR changes.";
+if (!API_KEY) {
+  console.error("❌ RELEASENOTES_API_KEY is not set.");
+  process.exit(1);
+}
 
-const data = JSON.stringify({
-  title: prTitle,
-  body: prSummary,
-});
+const PROJECT_ID = process.env.PROJECT_ID || "9630";
+const LIMIT = process.env.LIMIT || "20";
 
-const options = {
-  method: "POST",
-  hostname: "api.releasenotes.io",
-  path: "/v1/releases/draft/entries",
-  headers: {
-    Authorization: `Bearer ${API_KEY}`,
-    "Content-Type": "application/json",
-    "Content-Length": Buffer.byteLength(data),
-  },
+const payload = {
+  title: TITLE,
+  description: SUMMARY,
 };
 
-const req = https.request(options, (res) => {
-  let responseData = "";
+(async () => {
+  try {
+    console.log(`Pushing to ReleaseNotes.io: ${JSON.stringify(payload)}`);
+    const res = await fetch(
+      `https://api.releasenotes.io/v1/projects/${PROJECT_ID}/releases`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }
+    );
 
-  res.on("data", (chunk) => {
-    responseData += chunk;
-  });
+    const responseBody = await res.text();
 
-  res.on("end", () => {
-    console.log("✅ ReleaseNotes.io response:", res.statusCode, responseData);
-    if (res.statusCode >= 300) {
-      console.error("❌ Failed to push PR to ReleaseNotes.io.");
+    if (!res.ok) {
+      console.error(
+        `❌ Error from ReleaseNotes.io (${res.status}):\n${responseBody}`
+      );
       process.exit(1);
     }
-  });
-});
 
-req.on("error", (error) => {
-  console.error("❌ Error pushing to ReleaseNotes.io:", error);
-  process.exit(1);
-});
-
-req.write(data);
-req.end();
+    console.log(`✅ Successfully pushed to ReleaseNotes.io:\n${responseBody}`);
+  } catch (error) {
+    console.error("❌ Network or execution error:", error);
+    process.exit(1);
+  }
+})();
