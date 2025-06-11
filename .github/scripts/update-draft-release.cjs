@@ -95,30 +95,10 @@ async function makeApiRequest(url, method = "GET", data = null) {
       notes: [
         {
           note_type: "feature",
-          note_title: "sample feature",
-        },
-        {
-          note_type: "bugfix",
-          note_title: "sample bugfix",
-        },
-        {
-          note_type: "update",
-          note_title: "sample update",
+          note_title: `<h1>${TITLE}</h1><p>${SUMMARY}</p>`,
         },
       ],
-      //type: "new",
     };
-
-    //get the release details
-    // const releaseDetails = await makeApiRequest(
-    //   `https://api.releasenotes.io/api/v1/projects/${PROJECT_ID}/releases/AKMz9`,
-    //   "GET"
-    // );
-
-    // console.log("\n✅ Successfully fetched release details!");
-    // console.log(JSON.stringify(releaseDetails, null, 2));
-
-    // return;
 
     // Now create the release with the note
     console.log("\n📤 Creating release with note...");
