@@ -48,7 +48,7 @@ async function generateAiSummary(title, body) {
           {
             role: "system",
             content:
-              'Summarize this pull request for release notes. Be concise and focus on user-facing changes. Include the type of change (e.g., "Fix", "Feature", "Enhancement") at the beginning.',
+              'Summarize this pull request for release notes. Be concise and focus on user-facing changes. Include the type of change (e.g., "Fix", "Feature", "Enhancement") at the beginning. Send response in markdown format.',
           },
           {
             role: "user",
@@ -176,7 +176,7 @@ async function makeApiRequest(endpoint, method = "GET", data = null) {
       notes: [
         {
           note_type: "feature",
-          note_title: `<h1>${config.prTitle}</h1><p>${summary}</p>`,
+          note_title: `<h3>${config.prTitle}</h3><p>${summary}</p>`,
         },
       ],
     };
