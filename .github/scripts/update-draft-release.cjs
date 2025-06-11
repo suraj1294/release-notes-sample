@@ -167,15 +167,30 @@ async function makeApiRequest(endpoint, method = "GET", data = null) {
     const summary = await generateAiSummary(config.prTitle, config.prBody);
     console.log(`📋 Generated Summary: ${summary}`);
 
+    //based on commit convention set note type
+    // feat, fix, docs, style, refactor, test, chore
+    let noteType = "feature";
+    if (config.prTitle.startsWith("fix")) {
+      noteType = "bugfix";
+    } else if (config.prTitle.startsWith("docs")) {
+      noteType = "documentation";
+    } else if (config.prTitle.startsWith("style")) {
+      noteType = "style";
+    } else if (config.prTitle.startsWith("refactor")) {
+      noteType = "refactor";
+    } else if (config.prTitle.startsWith("test")) {
+      noteType = "test";
+    } else if (config.prTitle.startsWith("chore")) {
+      noteType = "update";
+    }
+
     // Prepare the payload for ReleaseNotes.io
     const payload = {
       id: config.releaseId,
-      title: config.prTitle,
-      description: summary,
       external_id: config.externalId,
       notes: [
         {
-          note_type: "feature",
+          note_type: noteType,
           note_title: `${summary}`,
         },
       ],
