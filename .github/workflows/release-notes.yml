@@ -38,17 +38,33 @@ jobs:
         run: env
 
       - uses: actions/checkout@v4
-      - name: Push to ReleaseNotes.io (via JS)
+      - name: Check for required secrets
+        id: check_secrets
+        run: |
+          if [ -z "$RELEASENOTES_API_KEY" ]; then
+            echo "::error::RELEASENOTES_API_KEY secret is not set"
+            exit 1
+          fi
+          if [ -z "$RELEASE_ID" ] || [ -z "$EXTERNAL_ID" ] || [ -z "$PROJECT_ID" ]; then
+            echo "::error::One or more required variables are not set. Please set RELEASE_ID, EXTERNAL_ID, and PROJECT_ID in your repository's secrets or variables"
+            exit 1
+          fi
+        env:
+          RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
+          RELEASE_ID: ${{ secrets.RELEASE_ID || vars.RELEASE_ID || '' }}
+          EXTERNAL_ID: ${{ secrets.EXTERNAL_ID || vars.EXTERNAL_ID || '' }}
+          PROJECT_ID: ${{ secrets.PROJECT_ID || vars.PROJECT_ID || '9630' }}
 
+      - name: Push to ReleaseNotes.io (via JS)
         run: |
           node .github/scripts/update-draft-release.cjs
         env:
           RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
           PR_TITLE: "${{ steps.pr_data.outputs.title }}"
           PR_SUMMARY: "${{ steps.summary.outputs.summary }}"
-          RELEASE_ID: ${{ vars.RELEASE_ID }}
-          EXTERNAL_ID: ${{ vars.EXTERNAL_ID }}
-          PROJECT_ID: ${{ vars.PROJECT_ID }}
+          RELEASE_ID: ${{ secrets.RELEASE_ID || vars.RELEASE_ID }}
+          EXTERNAL_ID: ${{ secrets.EXTERNAL_ID || vars.EXTERNAL_ID }}
+          PROJECT_ID: ${{ secrets.PROJECT_ID || vars.PROJECT_ID || '9630' }}
 
       # - name: Push to ReleaseNotes.io (stubbed API call)
       #   run: |
