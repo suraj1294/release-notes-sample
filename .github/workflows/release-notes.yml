@@ -46,6 +46,7 @@ jobs:
           RELEASE_ID: ${{ secrets.RELEASE_ID || vars.RELEASE_ID || '' }}
           EXTERNAL_ID: ${{ secrets.EXTERNAL_ID || vars.EXTERNAL_ID || '' }}
           PROJECT_ID: ${{ secrets.PROJECT_ID || vars.PROJECT_ID || '9630' }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Push to ReleaseNotes.io (via JS)
         run: |
