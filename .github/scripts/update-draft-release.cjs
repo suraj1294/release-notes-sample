@@ -187,6 +187,7 @@ async function makeApiRequest(endpoint, method = "GET", data = null) {
     // Prepare the payload for ReleaseNotes.io
     const payload = {
       id: config.releaseId,
+      title: config.prTitle,
       external_id: config.externalId,
       notes: [
         {
