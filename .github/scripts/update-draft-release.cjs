@@ -176,7 +176,7 @@ async function makeApiRequest(endpoint, method = "GET", data = null) {
       notes: [
         {
           note_type: "feature",
-          note_title: `<h3>${config.prTitle}</h3><p>${summary}</p>`,
+          note_title: `${summary}`,
         },
       ],
     };
