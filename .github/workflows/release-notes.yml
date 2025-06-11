@@ -37,28 +37,42 @@ jobs:
             echo "::error::RELEASENOTES_API_KEY secret is not set"
             exit 1
           fi
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY secret is not set"
+            exit 1
+          fi
           if [ -z "$RELEASE_ID" ] || [ -z "$EXTERNAL_ID" ] || [ -z "$PROJECT_ID" ]; then
             echo "::error::One or more required variables are not set. Please set RELEASE_ID, EXTERNAL_ID, and PROJECT_ID in your repository's secrets or variables"
             exit 1
           fi
         env:
           RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           RELEASE_ID: ${{ secrets.RELEASE_ID || vars.RELEASE_ID || '' }}
           EXTERNAL_ID: ${{ secrets.EXTERNAL_ID || vars.EXTERNAL_ID || '' }}
           PROJECT_ID: ${{ secrets.PROJECT_ID || vars.PROJECT_ID || '9630' }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       - name: Push to ReleaseNotes.io (via JS)
         run: |
+          # Debug: Print environment variables (without sensitive values)
+          echo "Using RELEASE_ID: $RELEASE_ID"
+          echo "Using PROJECT_ID: $PROJECT_ID"
+          
+          # Run the script
           node .github/scripts/update-draft-release.cjs
         env:
+          # Required for ReleaseNotes.io
           RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
+          RELEASE_ID: ${{ secrets.RELEASE_ID || vars.RELEASE_ID || '' }}
+          EXTERNAL_ID: ${{ secrets.EXTERNAL_ID || vars.EXTERNAL_ID || '' }}
+          PROJECT_ID: ${{ secrets.PROJECT_ID || vars.PROJECT_ID || '9630' }}
+          
+          # Required for AI summary generation
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          
+          # PR data
           PR_TITLE: "${{ steps.pr_data.outputs.title }}"
           PR_BODY: "${{ steps.pr_data.outputs.body }}"
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RELEASE_ID: ${{ secrets.RELEASE_ID || vars.RELEASE_ID }}
-          EXTERNAL_ID: ${{ secrets.EXTERNAL_ID || vars.EXTERNAL_ID }}
-          PROJECT_ID: ${{ secrets.PROJECT_ID || vars.PROJECT_ID || '9630' }}
 
       # - name: Push to ReleaseNotes.io (stubbed API call)
       #   run: |
