@@ -10,6 +10,11 @@ if (!API_KEY) {
   process.exit(1);
 }
 
+if (!releaseId) {
+  console.error("❌ RELEASE_ID is not set.");
+  process.exit(1);
+}
+
 if (!external_id) {
   console.error("❌ EXTERNAL_ID is not set.");
   process.exit(1);
