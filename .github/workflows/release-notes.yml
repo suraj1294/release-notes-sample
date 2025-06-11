@@ -39,27 +39,30 @@ jobs:
       - name: Push to ReleaseNotes.io (via JS)
 
         run: |
-          node .github/scripts/pushToReleaseNotes.cjs
+          node .github/scripts/update-draft-release.cjs
         env:
           RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
           PR_TITLE: "${{ steps.pr_data.outputs.title }}"
           PR_SUMMARY: "${{ steps.summary.outputs.summary }}"
+          RELEASE_ID: "${{ env.RELEASE_ID }}"
+          EXTERNAL_ID: "${{ env.EXTERNAL_ID }}"
+          PROJECT_ID: "${{ env.PROJECT_ID }}"
 
-      - name: Push to ReleaseNotes.io (stubbed API call)
-        run: |
-          TITLE="${{ steps.pr_data.outputs.title }}"
-          SUMMARY="${{ steps.summary.outputs.summary }}"
+      # - name: Push to ReleaseNotes.io (stubbed API call)
+      #   run: |
+      #     TITLE="${{ steps.pr_data.outputs.title }}"
+      #     SUMMARY="${{ steps.summary.outputs.summary }}"
 
-          echo "Posting to ReleaseNotes.io"
-          echo "Title: $TITLE"
-          echo "Summary: $SUMMARY"
+      #     echo "Posting to ReleaseNotes.io"
+      #     echo "Title: $TITLE"
+      #     echo "Summary: $SUMMARY"
 
-          curl -X POST https://api.releasenotes.io/v1/releases/draft/entries \
-            -H "Authorization: Bearer ${{ secrets.RELEASENOTES_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{
-              "title": "'"${TITLE//\"/\\\"}"'",
-              "body": "'"${SUMMARY//\"/\\\"}"'"
-            }'
-        env:
-          RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
+      #     curl -X POST https://api.releasenotes.io/v1/releases/draft/entries \
+      #       -H "Authorization: Bearer ${{ secrets.RELEASENOTES_API_KEY }}" \
+      #       -H "Content-Type: application/json" \
+      #       -d '{
+      #         "title": "'"${TITLE//\"/\\\"}"'",
+      #         "body": "'"${SUMMARY//\"/\\\"}"'"
+      #       }'
+      #   env:
+      #     RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
