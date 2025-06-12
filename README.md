@@ -62,3 +62,6 @@ export default tseslint.config({
 3. Push to ReleaseNotes.io (via JS)
 
 ### Prerequisites
+
+Releasenotes API Key
+OPEN API key
