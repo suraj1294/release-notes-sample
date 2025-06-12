@@ -1,42 +1,64 @@
-# .github/workflows/release-notes.yml
-name: Push Release Notes on Push
+name: Manual PR Release Notes
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to generate release notes for'
+        required: true
+        type: number
 
 jobs:
-  push-to-releasenotes:
+  generate-pr-release-notes:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetch all history for all branches and tags
+          fetch-depth: 0  # Fetch all history for all branches and tags
 
       - name: Install GitHub CLI
         run: sudo apt-get update && sudo apt-get install gh -y
-      - name: Prepare release notes data
-        id: prepare_data
+
+      - name: Fetch PR data
+        id: pr_data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # For push events, use the commit message
-          TITLE="${{ github.event.head_commit.message || 'Untitled Commit' }}"
-          BODY="${{ github.event.head_commit.message || 'No description provided' }}"
-          COMMIT_SHA="${{ github.sha }}"
+          # Default values
+          PR_NUMBER=${{ github.event.inputs.pr_number }}
+          TITLE="Untitled PR"
+          BODY="No description provided"
+
+          # Configure Git to use the GitHub token
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # Fetch PR details
+          if [ -n "$PR_NUMBER" ]; then
+            echo "Fetching data from PR #$PR_NUMBER"
+            gh auth setup-git
+            gh pr view "$PR_NUMBER" --json title,body,number > pr.json && {
+              # Only update if we successfully got data
+              PR_TITLE=$(jq -r '.title // ""' pr.json)
+              PR_BODY=$(jq -r '.body // ""' pr.json)
+              
+              if [ -n "$PR_TITLE" ]; then
+                TITLE="$PR_TITLE"
+              fi
+              
+              if [ -n "$PR_BODY" ]; then
+                BODY="$PR_BODY"
+              fi
+            } || echo "Failed to fetch PR details, using default values"
+          fi
 
           # Output the values
           echo "title=${TITLE//$'\n'/ }" | tee -a $GITHUB_OUTPUT
           echo "body=$(echo "$BODY" | jq -Rs . | sed 's/^"\(.*\)"$/\1/')" | tee -a $GITHUB_OUTPUT
-          echo "commit_sha=${COMMIT_SHA}" | tee -a $GITHUB_OUTPUT
+          echo "pr_number=${PR_NUMBER}" | tee -a $GITHUB_OUTPUT
 
-          # Debug output
-          echo "Using title: ${TITLE:0:50}..."
-          echo "Using commit SHA: ${COMMIT_SHA}"
-
-      # AI summary generation has been moved to the update-draft-release.cjs script
-
-      - uses: actions/checkout@v4
       - name: Check for required secrets
         id: check_secrets
         run: |
@@ -79,7 +101,7 @@ jobs:
           # Required for AI summary generation
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-          # Commit data
-          PR_TITLE: ${{ steps.prepare_data.outputs.title }}
-          PR_BODY: ${{ steps.prepare_data.outputs.body }}
-          COMMIT_SHA: ${{ steps.prepare_data.outputs.commit_sha }}
+          # PR data
+          PR_TITLE: ${{ steps.pr_data.outputs.title }}
+          PR_BODY: ${{ steps.pr_data.outputs.body }}
+          PR_NUMBER: ${{ steps.pr_data.outputs.pr_number }}
