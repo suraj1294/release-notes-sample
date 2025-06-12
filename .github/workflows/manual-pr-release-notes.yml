@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       pr_number:
-        description: 'PR number to generate release notes for'
+        description: "PR number to generate release notes for"
         required: true
         type: number
 
@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch all history for all branches and tags
+          fetch-depth: 0 # Fetch all history for all branches and tags
 
       - name: Install GitHub CLI
         run: sudo apt-get update && sudo apt-get install gh -y
@@ -96,7 +96,7 @@ jobs:
           RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
           RELEASE_ID: ${{ secrets.RELEASE_ID || vars.RELEASE_ID || '' }}
           EXTERNAL_ID: ${{ secrets.EXTERNAL_ID || vars.EXTERNAL_ID || '' }}
-          PROJECT_ID: ${{ secrets.PROJECT_ID || vars.PROJECT_ID || '9630' }}
+          PROJECT_ID: ${{ secrets.PROJECT_ID || vars.PROJECT_ID || '' }}
 
           # Required for AI summary generation
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
