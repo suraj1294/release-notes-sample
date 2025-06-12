@@ -60,6 +60,8 @@ jobs:
 
       - name: Prepare PR data
         id: prepare_data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Get values from previous step
           TITLE="${{ steps.pr_data.outputs.title }}"

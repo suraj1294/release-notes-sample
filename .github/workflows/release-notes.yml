@@ -17,7 +17,7 @@ jobs:
 
       - name: Install GitHub CLI
         run: sudo apt-get update && sudo apt-get install gh -y
-      - name: Check for \#releasenotes tag
+      - name: Check for #releasenotes tag
         id: check_tag
         run: |
           # Check if commit message contains #releasenotes (case insensitive)
@@ -39,14 +39,28 @@ jobs:
           BODY="$(echo "$COMMIT_MSG" | sed 's/#releasenotes\s*//i')"
           COMMIT_SHA="${{ github.sha }}"
 
+          # Debug output
+          echo "Commit Message: $COMMIT_MSG"
+          echo "Title: $TITLE"
+          echo "Commit SHA: $COMMIT_SHA"
+
+          # Configure Git to use the GitHub token
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # Check for #releasenotes tag (case insensitive)
+          if echo "$COMMIT_MSG" | grep -qi '#releasenotes'; then
+            echo "::notice::#releasenotes tag found, proceeding with release notes"
+            echo "has_tag=true" | tee -a $GITHUB_OUTPUT
+          else
+            echo "::notice::No #releasenotes tag found, skipping release notes"
+            echo "has_tag=false" | tee -a $GITHUB_OUTPUT
+          fi
+
           # Output the values
           echo "title=${TITLE//$'\n'/ }" | tee -a $GITHUB_OUTPUT
           echo "body=$(echo "$BODY" | jq -Rs . | sed 's/^\"\(.*\)\"$/\1/')" | tee -a $GITHUB_OUTPUT
           echo "commit_sha=${COMMIT_SHA}" | tee -a $GITHUB_OUTPUT
-
-          # Debug output
-          echo "Using title: ${TITLE:0:50}..."
-          echo "Using commit SHA: ${COMMIT_SHA}"
 
       # AI summary generation has been moved to the update-draft-release.cjs script
 
@@ -69,9 +83,9 @@ jobs:
         env:
           RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RELEASE_ID: ${{ secrets.RELEASE_ID || vars.RELEASE_ID || '' }}
-          EXTERNAL_ID: ${{ secrets.EXTERNAL_ID || vars.EXTERNAL_ID || '' }}
-          PROJECT_ID: ${{ secrets.PROJECT_ID || vars.PROJECT_ID || '9630' }}
+          RELEASE_ID: ${{ vars.RELEASE_ID || '' }}
+          EXTERNAL_ID: ${{ vars.EXTERNAL_ID || '' }}
+          PROJECT_ID: ${{ vars.PROJECT_ID || '9630' }}
 
       - name: Push to ReleaseNotes.io (via JS)
         if: steps.check_tag.outputs.has_tag == 'true'
@@ -87,9 +101,9 @@ jobs:
         env:
           # Required for ReleaseNotes.io
           RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
-          RELEASE_ID: ${{ secrets.RELEASE_ID || vars.RELEASE_ID || '' }}
-          EXTERNAL_ID: ${{ secrets.EXTERNAL_ID || vars.EXTERNAL_ID || '' }}
-          PROJECT_ID: ${{ secrets.PROJECT_ID || vars.PROJECT_ID || '' }}
+          RELEASE_ID: ${{ vars.RELEASE_ID || '' }}
+          EXTERNAL_ID: ${{ vars.EXTERNAL_ID || '' }}
+          PROJECT_ID: ${{ vars.PROJECT_ID || '' }}
 
           # Required for AI summary generation
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
