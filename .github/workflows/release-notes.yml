@@ -41,9 +41,41 @@ jobs:
 
       #     # Verify authentication silently
       #     gh auth status >/dev/null 2>&1 || echo "GitHub authentication failed"
+      - name: Fetch PR data from push event
+        if: github.event_name == 'push' && github.event.pull_request
+        id: pr_data_push
+        run: |
+          # For push events, try to get the PR data from the commit
+          PR_NUMBER=""
+          TITLE="${{ github.event.head_commit.message || 'Untitled PR' }}"
+          BODY="${{ github.event.head_commit.message || 'No description provided' }}"
+          
+          # If this push is associated with a PR, try to get PR data
+          if [ -n "${{ github.event.pull_request.number }}" ]; then
+            echo "Fetching data from PR #${{ github.event.pull_request.number }}"
+            gh auth setup-git
+            gh pr view "${{ github.event.pull_request.number }}" --json title,body,number > pr.json && {
+              TITLE=$(jq -r '.title // ""' pr.json)
+              BODY=$(jq -r '.body // ""' pr.json)
+              PR_NUMBER=$(jq -r '.number // ""' pr.json)
+              
+              # Fallback if title is empty
+              [ -z "$TITLE" ] && TITLE="${{ github.event.head_commit.message || 'Untitled PR' }}"
+              # Fallback if body is empty
+              [ -z "$BODY" ] && BODY="${{ github.event.head_commit.message || 'No description provided' }}"
+            }
+          fi
+          
+          # Output the values
+          echo "title=${TITLE//$'\n'/ }" | tee -a $GITHUB_OUTPUT
+          echo "body=$(echo "$BODY" | jq -Rs . | sed 's/^"\(.*\)"$/\1/')" | tee -a $GITHUB_OUTPUT
+          echo "pr_number=${PR_NUMBER}" | tee -a $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fetch PR data
-        id: pr_data
+        if: github.event_name == 'pull_request'
+        id: pr_data_pull_request
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -117,6 +149,8 @@ jobs:
           # Debug: Print environment variables (without sensitive values)
           echo "Using RELEASE_ID: $RELEASE_ID"
           echo "Using PROJECT_ID: $PROJECT_ID"
+          echo "PR Title: $PR_TITLE"
+          echo "PR Number: $PR_NUMBER"
 
           # Run the script
           node .github/scripts/update-draft-release.cjs
@@ -130,9 +164,10 @@ jobs:
           # Required for AI summary generation
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
-          # PR data
-          PR_TITLE: "${{ steps.pr_data.outputs.title }}"
-          PR_BODY: "${{ steps.pr_data.outputs.body }}"
+          # PR data - use the appropriate step output based on the event
+          PR_TITLE: ${{ github.event_name == 'pull_request' && steps.pr_data_pull_request.outputs.title || steps.pr_data_push.outputs.title || github.event.head_commit.message || 'Untitled PR' }}
+          PR_BODY: ${{ github.event_name == 'pull_request' && steps.pr_data_pull_request.outputs.body || steps.pr_data_push.outputs.body || github.event.head_commit.message || 'No description provided' }}
+          PR_NUMBER: ${{ github.event_name == 'pull_request' && steps.pr_data_pull_request.outputs.pr_number || github.event.pull_request.number || '' }}
 
       # - name: Push to ReleaseNotes.io (stubbed API call)
       #   run: |
