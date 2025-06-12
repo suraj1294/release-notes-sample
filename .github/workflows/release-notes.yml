@@ -12,18 +12,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-          if ! command -v gh &> /dev/null; then
-            echo "GitHub CLI not found, installing..."
-            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-            && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-            && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-            && sudo apt-get update \
-            && sudo apt-get install gh -y
-          fi
+      - name: Install GitHub CLI
+        run: sudo apt-get update && sudo apt-get install gh -y
+      # - name: Install dependencies
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y jq
+      #     if ! command -v gh &> /dev/null; then
+      #       echo "GitHub CLI not found, installing..."
+      #       curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+      #       && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+      #       && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+      #       && sudo apt-get update \
+      #       && sudo apt-get install gh -y
+      #     fi
 
       # - name: Set up GitHub token
       #   env:
@@ -45,11 +47,12 @@ jobs:
         if: github.event_name == 'push' && github.event.pull_request
         id: pr_data_push
         run: |
+          sudo apt-get update && sudo apt-get install gh -y
           # For push events, try to get the PR data from the commit
           PR_NUMBER=""
           TITLE="${{ github.event.head_commit.message || 'Untitled PR' }}"
           BODY="${{ github.event.head_commit.message || 'No description provided' }}"
-          
+
           # If this push is associated with a PR, try to get PR data
           if [ -n "${{ github.event.pull_request.number }}" ]; then
             echo "Fetching data from PR #${{ github.event.pull_request.number }}"
@@ -65,7 +68,7 @@ jobs:
               [ -z "$BODY" ] && BODY="${{ github.event.head_commit.message || 'No description provided' }}"
             }
           fi
-          
+
           # Output the values
           echo "title=${TITLE//$'\n'/ }" | tee -a $GITHUB_OUTPUT
           echo "body=$(echo "$BODY" | jq -Rs . | sed 's/^"\(.*\)"$/\1/')" | tee -a $GITHUB_OUTPUT
