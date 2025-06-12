@@ -1,0 +1,51 @@
+name: Create Release in ReleaseNotes.io
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+      title:
+        description: 'Release title'
+        required: true
+        type: string
+      body:
+        description: 'Release notes/body'
+        required: false
+        type: string
+        default: ''
+      isDraft:
+        description: 'Create as draft release'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Create Release in ReleaseNotes.io
+        run: |
+          node .github/scripts/create-release.cjs
+        env:
+          RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
+          PROJECT_ID: ${{ secrets.PROJECT_ID || '9630' }}
+          VERSION: ${{ github.event.inputs.version }}
+          RELEASE_TITLE: ${{ github.event.inputs.title }}
+          RELEASE_BODY: ${{ github.event.inputs.body || '' }}
+          IS_DRAFT: ${{ github.event.inputs.isDraft || 'true' }}
+          EXTERNAL_ID: release-${{ github.run_id }}
