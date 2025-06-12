@@ -17,17 +17,31 @@ jobs:
 
       - name: Install GitHub CLI
         run: sudo apt-get update && sudo apt-get install gh -y
+      - name: Check for \#releasenotes tag
+        id: check_tag
+        run: |
+          # Check if commit message contains #releasenotes (case insensitive)
+          if echo "${{ github.event.head_commit.message || '' }}" | grep -qi '#releasenotes'; then
+            echo "::notice::#releasenotes tag found, proceeding with release notes"
+            echo "has_tag=true" >> $GITHUB_OUTPUT
+          else
+            echo "::notice::No #releasenotes tag found, skipping release notes"
+            echo "has_tag=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Prepare release notes data
+        if: steps.check_tag.outputs.has_tag == 'true'
         id: prepare_data
         run: |
-          # For push events, use the commit message
-          TITLE="${{ github.event.head_commit.message || 'Untitled Commit' }}"
-          BODY="${{ github.event.head_commit.message || 'No description provided' }}"
+          # For push events, use the commit message (remove the #releasenotes tag)
+          COMMIT_MSG="${{ github.event.head_commit.message || 'Untitled Commit' }}"
+          TITLE="$(echo "$COMMIT_MSG" | sed 's/#releasenotes\s*//i' | head -1)"
+          BODY="$(echo "$COMMIT_MSG" | sed 's/#releasenotes\s*//i')"
           COMMIT_SHA="${{ github.sha }}"
 
           # Output the values
           echo "title=${TITLE//$'\n'/ }" | tee -a $GITHUB_OUTPUT
-          echo "body=$(echo "$BODY" | jq -Rs . | sed 's/^"\(.*\)"$/\1/')" | tee -a $GITHUB_OUTPUT
+          echo "body=$(echo "$BODY" | jq -Rs . | sed 's/^\"\(.*\)\"$/\1/')" | tee -a $GITHUB_OUTPUT
           echo "commit_sha=${COMMIT_SHA}" | tee -a $GITHUB_OUTPUT
 
           # Debug output
@@ -60,12 +74,13 @@ jobs:
           PROJECT_ID: ${{ secrets.PROJECT_ID || vars.PROJECT_ID || '9630' }}
 
       - name: Push to ReleaseNotes.io (via JS)
+        if: steps.check_tag.outputs.has_tag == 'true'
         run: |
           # Debug: Print environment variables (without sensitive values)
           echo "Using RELEASE_ID: $RELEASE_ID"
           echo "Using PROJECT_ID: $PROJECT_ID"
           echo "PR Title: $PR_TITLE"
-          echo "PR Number: $PR_NUMBER"
+          echo "Commit SHA: $COMMIT_SHA"
 
           # Run the script
           node .github/scripts/update-draft-release.cjs

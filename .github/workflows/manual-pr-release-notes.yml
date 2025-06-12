@@ -21,43 +21,40 @@ jobs:
       - name: Install GitHub CLI
         run: sudo apt-get update && sudo apt-get install gh -y
 
-      - name: Fetch PR data
-        id: pr_data
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare PR data
+        id: prepare_data
         run: |
           # Default values
-          PR_NUMBER=${{ github.event.inputs.pr_number }}
-          TITLE="Untitled PR"
-          BODY="No description provided"
+          TITLE="${{ github.event.inputs.pr_title || github.event.pull_request.title || 'Untitled PR' }}"
+          BODY="${{ github.event.inputs.pr_body || github.event.pull_request.body || 'No description provided' }}"
+          PR_NUMBER="${{ github.event.inputs.pr_number || github.event.pull_request.number }}"
+          COMMIT_SHA="${{ github.event.pull_request.head.sha || github.sha }}"
 
           # Configure Git to use the GitHub token
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
 
-          # Fetch PR details
-          if [ -n "$PR_NUMBER" ]; then
-            echo "Fetching data from PR #$PR_NUMBER"
-            gh auth setup-git
-            gh pr view "$PR_NUMBER" --json title,body,number > pr.json && {
-              # Only update if we successfully got data
-              PR_TITLE=$(jq -r '.title // ""' pr.json)
-              PR_BODY=$(jq -r '.body // ""' pr.json)
-              
-              if [ -n "$PR_TITLE" ]; then
-                TITLE="$PR_TITLE"
-              fi
-              
-              if [ -n "$PR_BODY" ]; then
-                BODY="$PR_BODY"
-              fi
-            } || echo "Failed to fetch PR details, using default values"
+          # Check for #releasenotes tag (case insensitive)
+          if echo "$TITLE" | grep -qi '#releasenotes'; then
+            echo "::notice::#releasenotes tag found in PR title, proceeding with release notes"
+            echo "has_tag=true" | tee -a $GITHUB_OUTPUT
+            # Remove the #releasenotes tag from the title
+            CLEAN_TITLE=$(echo "$TITLE" | sed 's/#releasenotes\s*//i')
+            TITLE="$CLEAN_TITLE"
+          else
+            echo "::notice::No #releasenotes tag found in PR title, skipping release notes"
+            echo "has_tag=false" | tee -a $GITHUB_OUTPUT
           fi
-
+          
           # Output the values
           echo "title=${TITLE//$'\n'/ }" | tee -a $GITHUB_OUTPUT
-          echo "body=$(echo "$BODY" | jq -Rs . | sed 's/^"\(.*\)"$/\1/')" | tee -a $GITHUB_OUTPUT
+          echo "body=$(echo "$BODY" | jq -Rs . | sed 's/^\"\(.*\)\"$/\1/')" | tee -a $GITHUB_OUTPUT
           echo "pr_number=${PR_NUMBER}" | tee -a $GITHUB_OUTPUT
+          echo "commit_sha=${COMMIT_SHA}" | tee -a $GITHUB_OUTPUT
+          
+          # Debug output
+          echo "PR Title: $TITLE"
+          echo "PR Number: $PR_NUMBER"
 
       - name: Check for required secrets
         id: check_secrets
@@ -82,6 +79,7 @@ jobs:
           PROJECT_ID: ${{ secrets.PROJECT_ID || vars.PROJECT_ID || '9630' }}
 
       - name: Push to ReleaseNotes.io (via JS)
+        if: steps.prepare_data.outputs.has_tag == 'true'
         run: |
           # Debug: Print environment variables (without sensitive values)
           echo "Using RELEASE_ID: $RELEASE_ID"
