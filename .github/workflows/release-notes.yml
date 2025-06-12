@@ -12,6 +12,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for all branches and tags
+
       - name: Install GitHub CLI
         run: sudo apt-get update && sudo apt-get install gh -y
       # - name: Install dependencies
@@ -47,11 +52,14 @@ jobs:
         if: github.event_name == 'push' && github.event.pull_request
         id: pr_data_push
         run: |
-          sudo apt-get update && sudo apt-get install gh -y
           # For push events, try to get the PR data from the commit
           PR_NUMBER=""
           TITLE="${{ github.event.head_commit.message || 'Untitled PR' }}"
           BODY="${{ github.event.head_commit.message || 'No description provided' }}"
+
+          # Configure Git to use the GitHub token
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
 
           # If this push is associated with a PR, try to get PR data
           if [ -n "${{ github.event.pull_request.number }}" ]; then
@@ -63,10 +71,15 @@ jobs:
               PR_NUMBER=$(jq -r '.number // ""' pr.json)
               
               # Fallback if title is empty
-              [ -z "$TITLE" ] && TITLE="${{ github.event.head_commit.message || 'Untitled PR' }}"
+              if [ -z "$TITLE" ]; then
+                TITLE="${{ github.event.head_commit.message || 'Untitled PR' }}"
+              fi
+              
               # Fallback if body is empty
-              [ -z "$BODY" ] && BODY="${{ github.event.head_commit.message || 'No description provided' }}"
-            }
+              if [ -z "$BODY" ]; then
+                BODY="${{ github.event.head_commit.message || 'No description provided' }}"
+              fi
+            } || echo "Failed to fetch PR data, using commit message as fallback"
           fi
 
           # Output the values
@@ -83,34 +96,31 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Default values
-          TITLE="${{ github.event.head_commit.message || 'Untitled PR' }}"
-          BODY="${{ github.event.head_commit.message || 'No description provided' }}"
-          PR_NUMBER=""
+          TITLE="${{ github.event.pull_request.title || github.event.head_commit.message || 'Untitled PR' }}"
+          BODY="${{ github.event.pull_request.body || github.event.head_commit.message || 'No description provided' }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
 
-          # If triggered by pull_request event
-          if [[ -n "${{ github.event.pull_request.number }}" ]]; then
-            echo "Fetching data from PR #${{ github.event.pull_request.number }}"
-            gh pr view "${{ github.event.pull_request.number }}" --json title,body,number > pr.json || {
-              echo "Failed to fetch PR data, using commit message as fallback"
-              echo "title=$TITLE" | tee -a $GITHUB_OUTPUT
-              echo "body=$BODY" | tee -a $GITHUB_OUTPUT
-              echo "pr_number=" | tee -a $GITHUB_OUTPUT
-              exit 0
-            }
-            
-            TITLE=$(jq -r '.title // ""' pr.json)
-            BODY=$(jq -r '.body // ""' pr.json)
-            PR_NUMBER=$(jq -r '.number // ""' pr.json)
-            
-            # Fallback if title is empty
-            if [[ -z "$TITLE" ]]; then
-              TITLE="${{ github.event.head_commit.message || 'Untitled PR' }}"
-            fi
-            
-            # Fallback if body is empty
-            if [[ -z "$BODY" ]]; then
-              BODY="${{ github.event.head_commit.message || 'No description provided' }}"
-            fi
+          # Configure Git to use the GitHub token
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # If we have a PR number, try to fetch more details
+          if [ -n "$PR_NUMBER" ]; then
+            echo "Fetching data from PR #$PR_NUMBER"
+            gh auth setup-git
+            gh pr view "$PR_NUMBER" --json title,body,number > pr.json && {
+              # Only update if we successfully got data
+              PR_TITLE=$(jq -r '.title // ""' pr.json)
+              PR_BODY=$(jq -r '.body // ""' pr.json)
+              
+              if [ -n "$PR_TITLE" ]; then
+                TITLE="$PR_TITLE"
+              fi
+              
+              if [ -n "$PR_BODY" ]; then
+                BODY="$PR_BODY"
+              fi
+            } || echo "Failed to fetch PR details, using event data"
           fi
 
           # Output the values
