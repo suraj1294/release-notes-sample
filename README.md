@@ -52,3 +52,13 @@ export default tseslint.config({
   },
 });
 ```
+
+## Release Notes
+
+### Workflow
+
+1. Push to ReleaseNotes.io (via JS)
+2. AI summary generation
+3. Push to ReleaseNotes.io (via JS)
+
+### Prerequisites
