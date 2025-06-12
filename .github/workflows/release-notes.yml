@@ -12,21 +12,70 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install GitHub CLI
-        run: sudo apt-get update && sudo apt-get install gh -y
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          if ! command -v gh &> /dev/null; then
+            echo "GitHub CLI not found, installing..."
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+            && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+            && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+            && sudo apt-get update \
+            && sudo apt-get install gh -y
+          fi
 
-      - name: Fetch PR title and body using gh
+      - name: Set up GitHub token
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git config --global --add safe.directory /github/workspace
+          gh auth setup-git
+          gh auth status
+
+      - name: Fetch PR data
         id: pr_data
         run: |
-          gh auth setup-git
-          gh pr view ${{ github.event.pull_request.number }} --json title,body --repo ${{ github.repository }} > pr.json
-          TITLE=$(jq -r '.title' pr.json)
-          BODY=$(jq -r '.body' pr.json)
+          # Default values
+          TITLE="${{ github.event.head_commit.message || 'Untitled PR' }}"
+          BODY="${{ github.event.head_commit.message || 'No description provided' }}"
+          PR_NUMBER=""
+          
+          # If triggered by pull_request event
+          if [[ -n "${{ github.event.pull_request.number }}" ]]; then
+            echo "Fetching data from PR #${{ github.event.pull_request.number }}"
+            gh pr view "${{ github.event.pull_request.number }}" --json title,body,number > pr.json || {
+              echo "Failed to fetch PR data, using commit message as fallback"
+              echo "title=$TITLE" | tee -a $GITHUB_OUTPUT
+              echo "body=$BODY" | tee -a $GITHUB_OUTPUT
+              echo "pr_number=" | tee -a $GITHUB_OUTPUT
+              exit 0
+            }
+            
+            TITLE=$(jq -r '.title // ""' pr.json)
+            BODY=$(jq -r '.body // ""' pr.json)
+            PR_NUMBER=$(jq -r '.number // ""' pr.json)
+            
+            # Fallback if title is empty
+            if [[ -z "$TITLE" ]]; then
+              TITLE="${{ github.event.head_commit.message || 'Untitled PR' }}"
+            fi
+            
+            # Fallback if body is empty
+            if [[ -z "$BODY" ]]; then
+              BODY="${{ github.event.head_commit.message || 'No description provided' }}"
+            fi
+          fi
+          
+          # Output the values
+          echo "title=${TITLE//$'\n'/ }" | tee -a $GITHUB_OUTPUT
+          echo "body=$(echo "$BODY" | jq -Rs . | sed 's/^"\(.*\)"$/\1/')" | tee -a $GITHUB_OUTPUT
+          echo "pr_number=${PR_NUMBER}" | tee -a $GITHUB_OUTPUT
+          
+          # Debug output
+          echo "Using title: ${TITLE:0:50}..."
+          echo "Using PR number: $PR_NUMBER"
 
-          echo "title=$TITLE" >> $GITHUB_OUTPUT
-          echo "body=$BODY" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # AI summary generation has been moved to the update-draft-release.cjs script
 
       - uses: actions/checkout@v4
