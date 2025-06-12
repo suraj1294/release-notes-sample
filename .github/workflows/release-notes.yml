@@ -34,9 +34,13 @@ jobs:
           git config --global user.email "actions@github.com"
           git config --global --add safe.directory /github/workspace
           
-          # Authenticate GitHub CLI and suppress informational message
-          echo "$GITHUB_TOKEN" | gh auth login --with-token > /dev/null 2>&1
-          gh auth status
+          # Authenticate GitHub CLI without storing credentials
+          echo "$GITHUB_TOKEN" > token.txt
+          gh auth login --with-token < token.txt
+          rm token.txt
+          
+          # Verify authentication silently
+          gh auth status >/dev/null 2>&1 || echo "GitHub authentication failed"
 
       - name: Fetch PR data
         id: pr_data
