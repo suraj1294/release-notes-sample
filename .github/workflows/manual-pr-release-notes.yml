@@ -141,6 +141,8 @@ jobs:
             echo "::error::Failed to fetch valid release config from $CONFIG_URL"
             exit 1
           fi
+        env:
+          APP_URL: ${{ vars.APP_URL }}
 
       - name: Check for required secrets
         id: check_secrets
