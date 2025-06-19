@@ -65,3 +65,6 @@ export default tseslint.config({
 
 Releasenotes API Key
 OPEN API key
+ReleaseNotes.io Project ID
+ReleaseNotes.io Release ID
+ReleaseNotes.io External ID
