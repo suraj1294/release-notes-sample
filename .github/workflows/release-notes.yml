@@ -65,6 +65,34 @@ jobs:
       # AI summary generation has been moved to the update-draft-release.cjs script
 
       - uses: actions/checkout@v4
+      - name: Fetch release config from site
+        id: fetch_config
+        run: |
+          # Get the app URL from environment variables or use github-pages URL as fallback
+          APP_URL="${{ vars.APP_URL }}"
+          CONFIG_URL="${APP_URL}/releasenote-config.json"
+
+          echo "Fetching release config from: $CONFIG_URL"
+
+          # Fetch the config file
+          CONFIG_JSON=$(curl -s "$CONFIG_URL" || echo '{}')
+
+          # Parse the JSON and set outputs
+          RELEASE_ID=$(echo "$CONFIG_JSON" | jq -r '.release_id // ""')
+          EXTERNAL_ID=$(echo "$CONFIG_JSON" | jq -r '.external_id // ""')
+
+          echo "Fetched Release ID: $RELEASE_ID"
+          echo "Fetched External ID: $EXTERNAL_ID"
+
+          # Set outputs for next steps
+          echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
+          echo "external_id=$EXTERNAL_ID" >> $GITHUB_OUTPUT
+
+          if [ -z "$RELEASE_ID" ] || [ -z "$EXTERNAL_ID" ]; then
+            echo "::error::Failed to fetch valid release config from $CONFIG_URL"
+            exit 1
+          fi
+
       - name: Check for required secrets
         id: check_secrets
         run: |
@@ -76,16 +104,12 @@ jobs:
             echo "::error::OPENAI_API_KEY secret is not set"
             exit 1
           fi
-          if [ -z "$RELEASE_ID" ] || [ -z "$EXTERNAL_ID" ] || [ -z "$PROJECT_ID" ]; then
-            echo "::error::One or more required variables are not set. Please set RELEASE_ID, EXTERNAL_ID, and PROJECT_ID in your repository's secrets or variables"
-            exit 1
-          fi
         env:
           RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RELEASE_ID: ${{ vars.RELEASE_ID || '' }}
-          EXTERNAL_ID: ${{ vars.EXTERNAL_ID || '' }}
-          PROJECT_ID: ${{ vars.PROJECT_ID || '9630' }}
+          RELEASE_ID: ${{ steps.fetch_config.outputs.release_id }}
+          EXTERNAL_ID: ${{ steps.fetch_config.outputs.external_id }}
+          PROJECT_ID: ${{ vars.PROJECT_ID  }}
 
       - name: Push to ReleaseNotes.io (via JS)
         if: steps.check_tag.outputs.has_tag == 'true'
@@ -101,14 +125,15 @@ jobs:
         env:
           # Required for ReleaseNotes.io
           RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
-          RELEASE_ID: ${{ vars.RELEASE_ID || '' }}
-          EXTERNAL_ID: ${{ vars.EXTERNAL_ID || '' }}
-          PROJECT_ID: ${{ vars.PROJECT_ID || '' }}
-
+          RELEASE_ID: ${{ steps.fetch_config.outputs.release_id }}
+          EXTERNAL_ID: ${{ steps.fetch_config.outputs.external_id }}
+          PROJECT_ID: ${{ vars.PROJECT_ID }}
+          
           # Required for AI summary generation
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
-          # Commit data
+          
+          # PR and commit data
           PR_TITLE: ${{ steps.prepare_data.outputs.title }}
           PR_BODY: ${{ steps.prepare_data.outputs.body }}
+          PR_NUMBER: ${{ steps.prepare_data.outputs.pr_number }}
           COMMIT_SHA: ${{ steps.prepare_data.outputs.commit_sha }}
