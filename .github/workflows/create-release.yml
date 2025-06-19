@@ -43,19 +43,19 @@ jobs:
         run: |
           # Create release and capture output
           OUTPUT=$(node .github/scripts/create-release.cjs)
-          
+
           # Extract the JSON between the markers
           RELEASE_JSON=$(echo "$OUTPUT" | sed -n '/--- RELEASE_INFO_START ---/,/--- RELEASE_INFO_END ---/p' | head -n -1 | tail -n +2)
-          
+
           # Output the release info
           echo "release_info=$RELEASE_JSON" >> $GITHUB_OUTPUT
-          
+
           # Also set individual outputs for easier access
           RELEASE_ID=$(echo "$RELEASE_JSON" | jq -r '.release_id')
           EXTERNAL_ID=$(echo "$RELEASE_JSON" | jq -r '.external_id')
           echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
           echo "external_id=$EXTERNAL_ID" >> $GITHUB_OUTPUT
-          
+
           # Print the release info for debugging
           echo "Created release with ID: $RELEASE_ID and external ID: $EXTERNAL_ID"
         env:
@@ -67,16 +67,16 @@ jobs:
           IS_DRAFT: ${{ github.event.inputs.isDraft || 'true' }}
           EXTERNAL_ID: release-${{ github.run_id }}
 
-      - name: Update release config and create PR
-        if: success()
+      - name: Update release config
+        id: update_config
         run: |
           # Create public directory if it doesn't exist
           mkdir -p public
-          
+
           # Get release info from previous step outputs
           RELEASE_ID="${{ steps.create_release.outputs.release_id }}"
           EXTERNAL_ID="${{ steps.create_release.outputs.external_id }}"
-          
+
           # Create or update releasenote-config.json
           CONFIG_FILE="public/releasenote-config.json"
           if [ -f "$CONFIG_FILE" ]; then
@@ -89,28 +89,25 @@ jobs:
             # Create new config
             echo "{\"release_id\": \"$RELEASE_ID\", \"external_id\": \"$EXTERNAL_ID\"}" > "$CONFIG_FILE"
           fi
-          
-          # Configure git
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          
-          # Create a new branch
-          BRANCH_NAME="update/release-config-${RELEASE_ID}"
-          git checkout -b "$BRANCH_NAME"
-          
-          # Commit changes
-          git add "$CONFIG_FILE"
-          git commit -m "Update release config with ID: $RELEASE_ID"
-          
-          # Push to origin
-          git push -u origin "$BRANCH_NAME"
-          
-          # Create PR
-          gh pr create \
-            --title "Update release configuration for ${{ github.event.inputs.version }}" \
-            --body "Automated update of release configuration with new release ID: $RELEASE_ID" \
-            --base main \
-            --head "$BRANCH_NAME"
+
+          # Output the branch name for the next step
+          echo "branch_name=update/release-config-${RELEASE_ID}" >> $GITHUB_OUTPUT
+
+          # Print the updated config for debugging
+          echo "Updated config file:"
+          cat "$CONFIG_FILE"
+        shell: bash
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          branch: ${{ steps.update_config.outputs.branch_name }}
+          title: "Update release configuration for ${{ github.event.inputs.version }}"
+          body: |
+            Automated update of release configuration with new release:
+            - Release ID: ${{ steps.create_release.outputs.release_id }}
+            - External ID: ${{ steps.create_release.outputs.external_id }}
+            - Version: ${{ github.event.inputs.version }}
+          commit-message: "Update release config with ID: ${{ steps.create_release.outputs.release_id }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
