@@ -96,7 +96,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           branch: ${{ steps.update_config.outputs.branch_name }}
-          title: "Update release configuration for ${{ steps.create_release.outputs.release_id }}"
+          title: "Update release configuration for ${{ steps.create_release.outputs.external_id }}"
           body: |
             Automated update of release configuration with new release:
             - Release ID: ${{ steps.create_release.outputs.release_id }}
