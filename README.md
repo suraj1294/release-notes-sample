@@ -68,3 +68,11 @@ OPEN API key
 ReleaseNotes.io Project ID
 ReleaseNotes.io Release ID
 ReleaseNotes.io External ID
+
+###
+
+Workflow
+
+1. Push to ReleaseNotes.io (via JS)
+2. AI summary generation
+3. Push to ReleaseNotes.io (via JS)
