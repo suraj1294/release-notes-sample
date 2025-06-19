@@ -3,10 +3,6 @@ name: Create Release in ReleaseNotes.io
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Release version (e.g., 1.0.0)"
-        required: true
-        type: string
       title:
         description: "Release title"
         required: true
@@ -16,11 +12,11 @@ on:
         required: false
         type: string
         default: ""
-      isDraft:
-        description: "Create as draft release"
+      external_id:
+        description: "External ID"
         required: false
-        type: boolean
-        default: true
+        type: string
+        default: ""
 
 jobs:
   create-release:
@@ -60,12 +56,10 @@ jobs:
           echo "Created release with ID: $RELEASE_ID and external ID: $EXTERNAL_ID"
         env:
           RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
-          PROJECT_ID: ${{ secrets.PROJECT_ID || '' }}
-          VERSION: ${{ github.event.inputs.version }}
+          PROJECT_ID: ${{ secrets.PROJECT_ID }}
           RELEASE_TITLE: ${{ github.event.inputs.title }}
           RELEASE_BODY: ${{ github.event.inputs.body || '' }}
-          IS_DRAFT: ${{ github.event.inputs.isDraft || 'true' }}
-          EXTERNAL_ID: release-${{ github.run_id }}
+          EXTERNAL_ID: release-${{ github.event.inputs.external_id }}
 
       - name: Update release config
         id: update_config
