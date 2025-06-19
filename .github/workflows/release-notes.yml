@@ -69,7 +69,6 @@ jobs:
         id: fetch_config
         run: |
           # Get the app URL from environment variables or use github-pages URL as fallback
-          APP_URL="${{ vars.APP_URL }}"
           CONFIG_URL="${APP_URL}/releasenote-config.json"
 
           echo "Fetching release config from: $CONFIG_URL"
@@ -92,6 +91,8 @@ jobs:
             echo "::error::Failed to fetch valid release config from $CONFIG_URL"
             exit 1
           fi
+        env:
+          APP_URL: ${{ vars.APP_URL }}
 
       - name: Check for required secrets
         id: check_secrets
@@ -110,6 +111,7 @@ jobs:
           RELEASE_ID: ${{ steps.fetch_config.outputs.release_id }}
           EXTERNAL_ID: ${{ steps.fetch_config.outputs.external_id }}
           PROJECT_ID: ${{ vars.PROJECT_ID  }}
+          APP_URL: ${{ vars.APP_URL }}
 
       - name: Push to ReleaseNotes.io (via JS)
         if: steps.check_tag.outputs.has_tag == 'true'
@@ -128,10 +130,10 @@ jobs:
           RELEASE_ID: ${{ steps.fetch_config.outputs.release_id }}
           EXTERNAL_ID: ${{ steps.fetch_config.outputs.external_id }}
           PROJECT_ID: ${{ vars.PROJECT_ID }}
-          
+
           # Required for AI summary generation
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          
+
           # PR and commit data
           PR_TITLE: ${{ steps.prepare_data.outputs.title }}
           PR_BODY: ${{ steps.prepare_data.outputs.body }}
