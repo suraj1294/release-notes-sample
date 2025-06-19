@@ -129,7 +129,16 @@ async function createRelease() {
     console.log(`- External ID: ${config.externalId}`);
     
     // Create the release
-    await createRelease();
+    const release = await createRelease();
+    
+    // Output the release information in JSON format for the workflow
+    console.log('\n--- RELEASE_INFO_START ---');
+    console.log(JSON.stringify({
+      release_id: release.id,
+      external_id: config.externalId,
+      version: config.version
+    }));
+    console.log('--- RELEASE_INFO_END ---');
     
   } catch (error) {
     console.error('\n❌ Process failed:', error.message);
