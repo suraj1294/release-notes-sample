@@ -2,7 +2,7 @@ name: Manual PR Release Notes
 
 # Environment variables for the workflow
 env:
-  PROJECT_ID: "9630"  # Replace with your actual project ID
+  PROJECT_ID: "9630" # Replace with your actual project ID
 
 on:
   workflow_dispatch:
@@ -165,7 +165,7 @@ jobs:
           APP_URL: ${{ vars.APP_URL }}
           RELEASE_ID: ${{ steps.fetch_config.outputs.release_id }}
           EXTERNAL_ID: ${{ steps.fetch_config.outputs.external_id }}
-          PROJECT_ID: ${{ vars.PROJECT_ID }}
+          PROJECT_ID: ${{ env.PROJECT_ID }}
 
       - name: Push to ReleaseNotes.io (via JS)
         if: steps.prepare_data.outputs.has_tag == 'true'
@@ -183,7 +183,7 @@ jobs:
           RELEASENOTES_API_KEY: ${{ secrets.RELEASENOTES_API_KEY }}
           RELEASE_ID: ${{ steps.fetch_config.outputs.release_id }}
           EXTERNAL_ID: ${{ steps.fetch_config.outputs.external_id }}
-          PROJECT_ID: ${{ vars.PROJECT_ID  }}
+          PROJECT_ID: ${{ env.PROJECT_ID  }}
 
           # Required for AI summary generation
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
