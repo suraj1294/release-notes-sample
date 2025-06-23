@@ -1,5 +1,9 @@
 name: Manual PR Release Notes
 
+# Environment variables for the workflow
+env:
+  PROJECT_ID: "9630"  # Replace with your actual project ID
+
 on:
   workflow_dispatch:
     inputs:

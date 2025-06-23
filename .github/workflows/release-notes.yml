@@ -1,6 +1,10 @@
 # .github/workflows/release-notes.yml
 name: Push Release Notes on Push
 
+# Environment variables for the workflow
+env:
+  PROJECT_ID: "9630"  # Replace with your actual project ID
+
 on:
   push:
     branches: [main]
